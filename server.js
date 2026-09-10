@@ -52,13 +52,34 @@ const User = mongoose.model("User", userSchema);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+// CORS — static frontend (GitHub Pages / Netlify) se API calls allow karo
+app.use((req, res, next) => {
+  const allowedOrigins = (process.env.ALLOWED_ORIGINS || "https://tahir-ameen.github.io,https://alameenglobalacademy.netlify.app").split(",").map((s) => s.trim());
+  const origin = req.headers.origin;
+  const isAllowed =
+    origin === undefined ||
+    (origin && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) ||
+    (origin && allowedOrigins.includes(origin));
+  if (origin && isAllowed) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+  }
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (req.method === "OPTIONS") return res.sendStatus(204);
+  next();
+});
+
 app.use(express.static(path.join(__dirname)));
 
 // ---------------------------------------------------------------------------
 // JWT Auth Middleware
 // ---------------------------------------------------------------------------
 function authMiddleware(req, res, next) {
-  const token = req.cookies.token;
+  const token =
+    (req.headers.authorization && req.headers.authorization.startsWith("Bearer ") && req.headers.authorization.slice(7)) ||
+    req.cookies.token;
   if (!token) return res.status(401).json({ ok: false, message: "Not logged in" });
 
   try {
@@ -112,6 +133,7 @@ app.post("/api/auth/signup", async (req, res) => {
     return res.status(201).json({
       ok: true,
       message: "Account created successfully!",
+      token,
       user: { name: user.name, email: user.email },
     });
   } catch (err) {
@@ -154,6 +176,7 @@ app.post("/api/auth/login", async (req, res) => {
     return res.status(200).json({
       ok: true,
       message: "Logged in successfully!",
+      token,
       user: { name: user.name, email: user.email },
     });
   } catch (err) {
@@ -279,8 +302,15 @@ function saveToFile(record) {
 }
 
 // ---------------------------------------------------------------------------
+// Health check (Render free ke liye)
+// ---------------------------------------------------------------------------
+app.get("/api/health", (req, res) => {
+  res.json({ ok: true, status: "up" });
+});
+
+// ---------------------------------------------------------------------------
 // Start server
 // ---------------------------------------------------------------------------
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`Portfolio server running at http://127.0.0.1:${PORT}`);
 });

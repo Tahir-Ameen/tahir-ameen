@@ -920,24 +920,26 @@
     const loginForm = document.getElementById("login-form");
     const signupForm = document.getElementById("signup-form");
 
+    const API = window.API_BASE_URL;
+    const TOKEN_KEY = "portfolio_token";
+
+    const getToken = () => localStorage.getItem(TOKEN_KEY);
+    const setToken = (t) => localStorage.setItem(TOKEN_KEY, t);
+    const clearToken = () => localStorage.removeItem(TOKEN_KEY);
+
     // --- Open / Close ---
     openBtn.addEventListener("click", async () => {
       // Check if already logged in
-      try {
-        const res = await fetch("/api/auth/me");
-        if (res.ok) {
-          // Already logged in — show logout
-          openBtn.textContent = "Log Out";
-          openBtn.onclick = async () => {
-            await fetch("/api/auth/logout", { method: "POST" });
-            openBtn.textContent = "Log In";
-            openBtn.onclick = null;
-            openBtn.addEventListener("click", arguments.callee);
-            location.reload();
-          };
-          return;
-        }
-      } catch {}
+      if (getToken()) {
+        // Already logged in — show logout
+        openBtn.textContent = "Log Out";
+        openBtn.onclick = async () => {
+          await fetch(API + "/api/auth/logout", { method: "POST" });
+          clearToken();
+          location.reload();
+        };
+        return;
+      }
       modal.classList.add("is-open");
       modal.setAttribute("aria-hidden", "false");
       document.body.style.overflow = "hidden";
@@ -977,13 +979,14 @@
       submitBtn.classList.add("is-loading"); submitBtn.disabled = true; status.textContent = "";
 
       try {
-        const res = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
+        const res = await fetch(API + "/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
         const data = await res.json();
         if (res.ok && data.ok) {
+          setToken(data.token);
           status.textContent = "Logged in! Reloading..."; status.className = "auth-modal__status is-success";
           setTimeout(() => location.reload(), 1000);
         } else { status.textContent = data.message || "Login failed."; status.className = "auth-modal__status is-error"; }
-      } catch { status.textContent = "Network error."; status.className = "auth-modal__status is-error"; }
+      } catch { status.textContent = "Network error. Is backend online? " + API; status.className = "auth-modal__status is-error"; }
       finally { submitBtn.classList.remove("is-loading"); submitBtn.disabled = false; }
     });
 
@@ -1003,26 +1006,38 @@
       submitBtn.classList.add("is-loading"); submitBtn.disabled = true; status.textContent = "";
 
       try {
-        const res = await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, email, password }) });
+        const res = await fetch(API + "/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, email, password }) });
         const data = await res.json();
         if (res.ok && data.ok) {
+          setToken(data.token);
           status.textContent = "Account created! Reloading..."; status.className = "auth-modal__status is-success";
           setTimeout(() => location.reload(), 1000);
         } else { status.textContent = data.message || "Signup failed."; status.className = "auth-modal__status is-error"; }
-      } catch { status.textContent = "Network error."; status.className = "auth-modal__status is-error"; }
+      } catch { status.textContent = "Network error. Is backend online? " + API; status.className = "auth-modal__status is-error"; }
       finally { submitBtn.classList.remove("is-loading"); submitBtn.disabled = false; }
     });
 
     // --- Check if logged in on page load ---
-    fetch("/api/auth/me").then(r => r.json()).then(data => {
-      if (data.ok && data.user) {
-        openBtn.textContent = data.user.name;
-        openBtn.onclick = async () => {
-          await fetch("/api/auth/logout", { method: "POST" });
-          location.reload();
-        };
+    (async function() {
+      const token = getToken();
+      if (!token) return;
+      try {
+        const res = await fetch(API + "/api/auth/me", { headers: { "Authorization": "Bearer " + token } });
+        const data = await res.json();
+        if (data.ok && data.user) {
+          openBtn.textContent = data.user.name;
+          openBtn.onclick = async () => {
+            await fetch(API + "/api/auth/logout", { method: "POST" });
+            clearToken();
+            location.reload();
+          };
+        } else {
+          clearToken();
+        }
+      } catch {
+        clearToken();
       }
-    }).catch(() => {});
+    })();
   })();
   </script>
 
@@ -1031,6 +1046,7 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6"/></svg>
   </button>
 
+  <script src="js/config.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

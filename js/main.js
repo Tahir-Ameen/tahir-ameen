@@ -337,7 +337,7 @@
       };
 
       try {
-        const response = await fetch("/api/contact", {
+        const response = await fetch(window.API_BASE_URL + "/api/contact", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -351,7 +351,7 @@
           setStatus(data.message || "Something went wrong. Please try again or email me directly.", "is-error");
         }
       } catch (err) {
-        setStatus("Network error. Please try again or email me directly at hello@ameen.dev.", "is-error");
+        setStatus("Network error. Please try again or email me directly at hafiztahirameen786@gmail.com.", "is-error");
       } finally {
         setLoading(false);
       }
