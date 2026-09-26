@@ -55,7 +55,7 @@ app.use(cookieParser());
 
 // CORS — static frontend (GitHub Pages / Netlify) se API calls allow karo
 app.use((req, res, next) => {
-  const allowedOrigins = (process.env.ALLOWED_ORIGINS || "https://tahir-ameen.github.io,https://alameenglobalacademy.netlify.app").split(",").map((s) => s.trim());
+  const allowedOrigins = (process.env.ALLOWED_ORIGINS || "https://tahir-ameen.github.io,https://alameenglobalacademy.netlify.app,https://tahirpersonalportfolio.netlify.app").split(",").map((s) => s.trim());
   const origin = req.headers.origin;
   const isAllowed =
     origin === undefined ||
@@ -125,8 +125,8 @@ app.post("/api/auth/signup", async (req, res) => {
 
     res.cookie("token", token, {
       httpOnly: true,
-      secure: false,
-      sameSite: "lax",
+      secure: true,
+      sameSite: "none",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -168,8 +168,8 @@ app.post("/api/auth/login", async (req, res) => {
 
     res.cookie("token", token, {
       httpOnly: true,
-      secure: false,
-      sameSite: "lax",
+      secure: true,
+      sameSite: "none",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -291,6 +291,10 @@ async function sendViaBrevo(record) {
 // Fallback: save to file
 // ---------------------------------------------------------------------------
 function saveToFile(record) {
+  if (process.env.VERCEL) {
+    console.log("[contact] Running on Vercel, skipping file save:", JSON.stringify(record));
+    return;
+  }
   try {
     const dir = path.join(__dirname, "messages");
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -302,15 +306,19 @@ function saveToFile(record) {
 }
 
 // ---------------------------------------------------------------------------
-// Health check (Render free ke liye)
+// Health check
 // ---------------------------------------------------------------------------
 app.get("/api/health", (req, res) => {
   res.json({ ok: true, status: "up" });
 });
 
 // ---------------------------------------------------------------------------
-// Start server
+// Start server (local only) / export for Vercel
 // ---------------------------------------------------------------------------
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Portfolio server running at http://127.0.0.1:${PORT}`);
-});
+if (!process.env.VERCEL) {
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Portfolio server running at http://127.0.0.1:${PORT}`);
+  });
+}
+
+module.exports = app;
