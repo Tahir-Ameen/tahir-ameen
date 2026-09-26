@@ -20,3 +20,4 @@ const API_BASE_URL = (function () {
   // GitHub Pages / Netlify / baqi sab - deployed backend
   return PRODUCTION_API_URL;
 })();
+window.API_BASE_URL = API_BASE_URL;
