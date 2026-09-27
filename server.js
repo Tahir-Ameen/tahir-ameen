@@ -17,12 +17,26 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ---------------------------------------------------------------------------
-// MongoDB Connection
+// MongoDB Connection (serverless-friendly: reuse connection across invocations)
 // ---------------------------------------------------------------------------
-mongoose
-  .connect(process.env.MONGODB_URI)
-  .then(() => console.log("[mongo] Connected to MongoDB"))
-  .catch((err) => console.error("[mongo] Connection error:", err.message));
+mongoose.set("bufferTimeoutMS", 20000);
+
+let isConnected = false;
+
+async function connectDB() {
+  if (isConnected || mongoose.connection.readyState === 1) return;
+  try {
+    await mongoose.connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 15000,
+    });
+    isConnected = true;
+    console.log("[mongo] Connected to MongoDB");
+  } catch (err) {
+    console.error("[mongo] Connection error:", err.message);
+  }
+}
+
+connectDB();
 
 // ---------------------------------------------------------------------------
 // User Schema
@@ -52,6 +66,14 @@ const User = mongoose.model("User", userSchema);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+// Ensure MongoDB is connected before handling any request
+app.use(async (req, res, next) => {
+  if (mongoose.connection.readyState !== 1) {
+    await connectDB();
+  }
+  next();
+});
 
 // CORS — static frontend (GitHub Pages / Netlify) se API calls allow karo
 app.use((req, res, next) => {
