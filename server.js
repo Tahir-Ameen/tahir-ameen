@@ -333,28 +333,6 @@ function saveToFile(record) {
 app.get("/api/health", (req, res) => {
   res.json({ ok: true, status: "up" });
 });
-// TEMPORARY DEBUG - test ke baad delete kar dena
-app.get("/api/debug", async (req, res) => {
-  const uri = process.env.MONGODB_URI || "";
-  const info = { hasUri: !!uri, uriLength: uri.length };
-  try {
-    const u = new URL(uri);
-    info.user = decodeURIComponent(u.username);
-    info.host = u.hostname;
-    info.db = u.pathname;
-    info.passwordLength = decodeURIComponent(u.password).length;
-  } catch (e) {
-    info.parseError = e.message;
-  }
-  try {
-    const c = await mongoose.createConnection(uri, { serverSelectionTimeoutMS: 8000 }).asPromise();
-    info.test = "connected OK";
-    await c.close();
-  } catch (e) {
-    info.test = "FAILED: " + e.message;
-  }
-  res.json(info);
-});
 // ---------------------------------------------------------------------------
 // Start server (local only) / export for Vercel
 // ---------------------------------------------------------------------------
